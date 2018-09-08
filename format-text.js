@@ -104,23 +104,151 @@ function createFormatTextObject(ast) {
 		var me;
 		me = {
 			computeSize: function() {
-				var sizeBody = wrapSize(ast.body);
+				var sizeBody = wrapSize(ast.body),
+					sizeNth = wrapSize(ast.nth);
 				return {
-					x: sizeBody.x + sizeBody.y,
-					y: sizeBody.y + 1,
-					center: sizeBody.center + 1
+					x: Math.max(sizeBody.y, sizeNth.x) + sizeBody.x,
+					y: Math.max(sizeBody.y + 1, sizeNth.y + sizeNth.x),
+					center: Math.max(sizeBody.center, sizeNth.y + sizeNth.x - sizeBody.center - 1)
 				};
 			},
 			format: function(canvas, x, y) {
 				var i,
+					sizeThis = me.computeSize(),
 					bodyFormat = wrapFormat(ast.body),
-					bodySize = wrapSize(ast.body);
-				bodyFormat(canvas, x + bodySize.y, y + 1);
-				for(i = 0; i < bodySize.y; i++) {
-					canvas.drawText(x + i, y + bodySize.y - i, i > 0 ? "/" : "v");
+					nthFormat = wrapFormat(ast.nth),
+					sizeBody = wrapSize(ast.body),
+					sizeNth = wrapSize(ast.nth);
+				if(ast.nth) {
+					nthFormat(canvas, x, y + Math.max(sizeBody.y - sizeBody.x - sizeNth.y, 0));
+					bodyFormat(canvas,
+						x + Math.max(sizeBody.y, sizeNth.x),
+						y + Math.max(1, sizeNth.y + sizeNth.x - sizeBody.y));
+					for(i = 0; i < Math.max(sizeBody.y, sizeNth.x); i++) {
+						canvas.drawText(x + i, y + sizeThis.y - i - 1, i > 0 ? "/" : "v");
+					}
+					for(i = 0; i < sizeBody.x; i++) {
+						canvas.drawText(
+							x + i + Math.max(sizeBody.y, sizeNth.x),
+							y + sizeThis.y - Math.max(sizeBody.y, sizeNth.x) - 1, "_");
+					}
+				} else {
+					bodyFormat(canvas, x + sizeBody.y, y + 1);
+					for(i = 0; i < sizeBody.y; i++) {
+						canvas.drawText(x + i, y + sizeBody.y - i, i > 0 ? "/" : "v");
+					}
+					for(i = 0; i < sizeBody.x; i++) {
+						canvas.drawText(x + i + sizeBody.y, y, "_");
+					}
 				}
-				for(i = 0; i < bodySize.x; i++) {
-					canvas.drawText(x + i + bodySize.y, y, "_");
+			}
+		};
+		return me;
+	}
+	function condMatrix() {
+		var me;
+		me = {
+			computeSize: function() {
+				var i,
+					j,
+					cSize,
+					jSize = null,
+					xMax = 0,
+					xCount,
+					ySize = 0,
+					yCount = 0;
+				for(i = 0; i < ast.body.length; i++) {
+					if(jSize === null) {
+						jSize = ast.body[i].length;
+					} else if(jSize !== ast.body[i].length) {
+						throw new Error("invalid matrix");
+					}
+					xCount = yCount = 0;
+					for(j = 0; j < ast.body[i].length; j++) {
+						cSize = wrapSize(ast.body[i][j]);
+						xCount += cSize.x + (j > 0 ? 2 : 0);
+						yCount = Math.max(cSize.y, yCount);
+					}
+					xMax = Math.max(xMax, xCount);
+					ySize += yCount + (i > 0 ? 1 : 0);
+				}
+				xMax += ast.right === "" ? 2 : 4;
+				return {
+					x: xMax,
+					y: ySize + 2,
+					center: Math.floor((ySize + 2) / 2)
+				}
+			},
+			format: function(canvas, x, y) {
+				var i,
+					j,
+					allSize = me.computeSize(),
+					cRender = [],
+					cSize = [],
+					xMax = [],
+					xMaxSum = [],
+					yCenter = [],
+					yMax = [],
+					yMaxSum = [];
+				for(i = 0; i < ast.body.length; i++) {
+					cRender[i] = [];
+					cSize[i] = [];
+					for(j = 0; j < ast.body[i].length; j++) {
+						cRender[i][j] = createFormatTextObject(ast.body[i][j]);
+						cSize[i][j] = cRender[i][j].computeSize();
+						if(yCenter[i]) {
+							yMax[i] = Math.max(yMax[i], cSize[i][j].y);
+							yCenter[i] = Math.max(yCenter[i], cSize[i][j].center);
+						} else {
+							yMax[i] = cSize[i][j].y;
+							yCenter[i] = cSize[i][j].center;
+						}
+					}
+				}
+				for(i = 0; i < ast.body.length; i++) {
+					for(j = 0; j < ast.body[i].length; j++) {
+						if(xMax[j]) {
+							xMax[j] = Math.max(xMax[j], cSize[i][j].x);
+						} else {
+							xMax[j] = cSize[i][j].x;
+						}
+					}
+				}
+				xMaxSum[0] = 0;
+				for(j = 1; j < ast.body[0].length; j++) {
+					xMaxSum[j] = xMaxSum[j - 1] + xMax[j - 1] + 2;
+				}
+				yMaxSum[0] = 0;
+				for(i = 1; i < ast.body.length; i++) {
+					yMaxSum[i] = yMaxSum[i - 1] + yMax[i - 1] + 1;
+				}
+				for(i = 0; i < ast.body.length; i++) {
+					for(j = 0; j < ast.body[i].length; j++) {
+						cRender[i][j].format(canvas, x + xMaxSum[j] + 2, y + yMaxSum[i] + yCenter[i] - cSize[i][j].center + 1);
+					}
+				}
+				for(i = 0; i < allSize.y; i++) {
+					if(i === 0) {
+						canvas.drawText(x, y + i, ast.leftUp);
+						if(ast.right !== ".") {
+							canvas.drawText(x + allSize.x - 1, y + i, ast.leftDown);
+						}
+					} else if(i === allSize.y - 1) {
+						canvas.drawText(x, y + i, ast.leftDown);
+						if(ast.right !== ".") {
+							canvas.drawText(x + allSize.x - 1, y + i, ast.leftUp);
+						}
+					} else if(ast.bracket && i === allSize.center) {
+						canvas.drawText(x, y + i, "<");
+						if(ast.right !== ".") {
+							canvas.drawText(x + allSize.x - 1, y + i, "|");
+						}
+					} else {
+						canvas.drawText(x, y + i, "|");
+						if(ast.right !== ".") {
+							canvas.drawText(x + allSize.x - 1, y + i, "|");
+						}
+					}
 				}
 			}
 		};
@@ -215,6 +343,8 @@ function createFormatTextObject(ast) {
 		return condLim();
 	case "root":
 		return condRoot();
+	case "matrix":
+		return condMatrix();
 	case "simple":
 		me = {
 			computeSize: function() {
