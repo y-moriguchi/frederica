@@ -6,8 +6,9 @@
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  **/
-function createCanvas(x, y) {
+function createCanvas(x, y, option) {
 	var me,
+		opt = option ? option : {},
 		canvas = [],
 		i,
 		j;
@@ -455,10 +456,10 @@ function createFormatTextObject(ast) {
 	}
 }
 
-function formatText(ast) {
+function formatText(ast, option) {
 	var formatObject = createFormatTextObject(ast),
 		size = formatObject.computeSize(),
-		canvas = createCanvas(size.x, size.y);
+		canvas = createCanvas(size.x, size.y, option);
 	formatObject.format(canvas, 0, 0);
 	return canvas.toString();
 }
