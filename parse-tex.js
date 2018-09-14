@@ -13,10 +13,8 @@ function createLaTeXParser(option) {
 	var opt = option ? option : {};
 	function generatePtnExpr(bracket) {
 		return function (ptnExprList, ptnExpr, ptnExprListWithoutBracket, ptnExprWithoutBracket) {
-			var funcs = [
-				"sin", "cos", "tan", "csc", "sec", "cot", "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh",
-				"log", "ln", "exp"
-			];
+			var trifuncs = [ "sinh", "cosh", "tanh", "sin", "cos", "tan", "csc", "sec", "cot" ];
+			var funcs = [ "arcsin", "arccos", "arctan", "log", "ln", "exp" ];
 			var sequencesSimple = {
 				"\\,": " ",
 				"\\ ": " ",
@@ -74,6 +72,24 @@ function createLaTeXParser(option) {
 				"vec": "->",
 				"dot": "."
 			};
+			var emphasises = {
+				"boldsymbol": { begin: "*", end: "*" },
+				"mathbb": { begin: "*|", end: "*" },
+				"mathfrak": { begin: "**", end: "*" }
+			};
+			function generateTrifuncs(funcs) {
+				var i,
+					ptnf = [];
+				for(i = 0; i < funcs.length; i++) {
+					(function(f) {
+						ptnf.push(R.or(
+							R.then("\\" + f).then("^").then(ptnExpr, function(x, b, a) { return { type: "func", item: f, sup: b }}),
+							R.then("\\" + f, function(x, b, a) { return { type: "func", item: f }})
+						));
+					})(funcs[i]);
+				}
+				return R.or.apply(null, ptnf);
+			}
 			function generateFuncs(funcs) {
 				var i,
 					ptnf = [];
@@ -104,6 +120,20 @@ function createLaTeXParser(option) {
 						(function(f) {
 							ptnf.push(R.then("\\" + f).then("{").then(ptnExprList).then("}").action(function(a) {
 								return { type: "accent", body: a, accent: accents[f] }
+							}));
+						})(i);
+					}
+				}
+				return R.or.apply(null, ptnf);
+			}
+			function generateEmphasises(emphasises) {
+				var i,
+					ptnf = [];
+				for(i in emphasises) {
+					if(emphasises.hasOwnProperty(i)) {
+						(function(f) {
+							ptnf.push(R.then("\\" + f).then("{").then(ptnExprList).then("}").action(function(a) {
+								return { type: "emphasis", body: a, emphasis: emphasises[f] }
 							}));
 						})(i);
 					}
@@ -179,18 +209,20 @@ function createLaTeXParser(option) {
 				ptnLim,
 				ptnMatrix,
 				generateAccents(accents),
+				generateEmphasises(emphasises),
+				generateTrifuncs(trifuncs),
 				generateFuncs(funcs)
 			);
 		};
 	}
 	var ptnExprList = R.Yn(
 		function(ptnExprList, ptnExpr, ptnExprListWithoutBracket, ptnExprWithoutBracket) {
-			return R.then(R.attr([]).thenOneOrMore(ptnExpr, function(x, b, a) { return a.concat(b); }))
+			return R.then(R.attr([]).thenZeroOrMore(ptnExpr, function(x, b, a) { return a.concat(b); }))
 				.action(function(a) { return { type: "exprlist", items: a }; });
 		},
 		generatePtnExpr(/[\(\)\[\]=]/),
 		function(ptnExprList, ptnExpr, ptnExprListWithoutBracket, ptnExprWithoutBracket) {
-			return R.then(R.attr([]).thenOneOrMore(ptnExprWithoutBracket, function(x, b, a) { return a.concat(b); }))
+			return R.then(R.attr([]).thenZeroOrMore(ptnExprWithoutBracket, function(x, b, a) { return a.concat(b); }))
 				.action(function(a) { return { type: "exprlist", items: a }; });
 		},
 		generatePtnExpr(/[\(\)=]/)

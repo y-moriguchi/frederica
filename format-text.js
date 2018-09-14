@@ -63,8 +63,8 @@ function createFormatTextObject(ast) {
 		condSum,
 		comdInt,
 		condLim;
-	function wrapSize(ast) {
-		return ast ? createFormatTextObject(ast).computeSize() : {
+	function wrapSize(ast, prevSize) {
+		return ast ? createFormatTextObject(ast).computeSize(prevSize) : {
 			x: 0,
 			y: 0,
 			center: 0
@@ -72,6 +72,12 @@ function createFormatTextObject(ast) {
 	}
 	function wrapFormat(ast) {
 		return ast ? createFormatTextObject(ast).format : function() {}
+	}
+	function wrapCreate(ast) {
+		return {
+			computeSize: function(prevSize) { return wrapSize(ast, prevSize); },
+			format: wrapFormat(ast)
+		};
 	}
 	function condSumInt(xsize, ysize, text) {
 		return function() {
@@ -195,7 +201,7 @@ function createFormatTextObject(ast) {
 					cRender[i] = [];
 					cSize[i] = [];
 					for(j = 0; j < ast.body[i].length; j++) {
-						cRender[i][j] = createFormatTextObject(ast.body[i][j]);
+						cRender[i][j] = wrapCreate(ast.body[i][j]);
 						cSize[i][j] = cRender[i][j].computeSize();
 						if(yCenter[i]) {
 							yMax[i] = Math.max(yMax[i], cSize[i][j].y);
@@ -259,7 +265,7 @@ function createFormatTextObject(ast) {
 		var me;
 		me = {
 			computeSize: function() {
-				var bodySize = createFormatTextObject(ast.body).computeSize();
+				var bodySize = wrapSize(ast.body);
 				return {
 					x: Math.max(bodySize.x, ast.accent.length),
 					y: bodySize.y + 1,
@@ -267,9 +273,32 @@ function createFormatTextObject(ast) {
 				};
 			},
 			format: function(canvas, x, y) {
-				var body = createFormatTextObject(ast.body);
+				var body = wrapCreate(ast.body);
 				body.format(canvas, x, y + 1);
 				canvas.drawText(x, y, ast.accent);
+			}
+		};
+		return me;
+	}
+	function condEmphasis() {
+		var me;
+		me = {
+			computeSize: function() {
+				var bodySize = wrapSize(ast.body);
+				return {
+					x: bodySize.x > 0 ? ast.emphasis.begin.length + bodySize.x + ast.emphasis.end.length : 0,
+					y: bodySize.y,
+					center: bodySize.center
+				};
+			},
+			format: function(canvas, x, y) {
+				var body = wrapCreate(ast.body),
+					bodySize = body.computeSize();
+				if(bodySize.x > 0) {
+					body.format(canvas, x + ast.emphasis.begin.length, y);
+					canvas.drawText(x, y, ast.emphasis.begin);
+					canvas.drawText(x + ast.emphasis.begin.length + bodySize.x, y, ast.emphasis.end);
+				}
 			}
 		};
 		return me;
@@ -281,8 +310,8 @@ function createFormatTextObject(ast) {
 	case "frac":
 		me = {
 			computeSize: function() {
-				var numer = createFormatTextObject(ast.numerator).computeSize(),
-					denom = createFormatTextObject(ast.denominator).computeSize();
+				var numer = wrapSize(ast.numerator),
+					denom = wrapSize(ast.denominator);
 				return {
 					x: Math.max(numer.x, denom.x) + 2,
 					y: numer.y + 1 + denom.y,
@@ -290,8 +319,8 @@ function createFormatTextObject(ast) {
 				};
 			},
 			format: function(canvas, x, y) {
-				var numer = createFormatTextObject(ast.numerator),
-					denom = createFormatTextObject(ast.denominator),
+				var numer = wrapCreate(ast.numerator),
+					denom = wrapCreate(ast.denominator),
 					numerSize = numer.computeSize(),
 					denomSize = denom.computeSize(),
 					thisSize = me.computeSize(),
@@ -306,7 +335,7 @@ function createFormatTextObject(ast) {
 	case "sup":
 		me = {
 			computeSize: function(prevSize) {
-				var sizeSup = createFormatTextObject(ast.sup).computeSize();
+				var sizeSup = wrapSize(ast.sup);
 				return {
 					x: sizeSup.x,
 					y: sizeSup.y + prevSize.y,
@@ -314,7 +343,7 @@ function createFormatTextObject(ast) {
 				};
 			},
 			format: function(canvas, x, y, prevSize) {
-				var sup = createFormatTextObject(ast.sup);
+				var sup = wrapCreate(ast.sup);
 				sup.format(canvas, x, y);
 			}
 		};
@@ -322,7 +351,7 @@ function createFormatTextObject(ast) {
 	case "sub":
 		me = {
 			computeSize: function(prevSize) {
-				var sizeSub = createFormatTextObject(ast.sub).computeSize();
+				var sizeSub = wrapSize(ast.sub);
 				return {
 					x: sizeSub.x,
 					y: sizeSub.y + prevSize.y,
@@ -330,7 +359,7 @@ function createFormatTextObject(ast) {
 				};
 			},
 			format: function(canvas, x, y, prevSize) {
-				var sub = createFormatTextObject(ast.sub);
+				var sub = wrapCreate(ast.sub);
 				sub.format(canvas, x, y + prevSize.y);
 			}
 		};
@@ -338,8 +367,8 @@ function createFormatTextObject(ast) {
 	case "supsub":
 		me = {
 			computeSize: function(prevSize) {
-				var sizeSup = createFormatTextObject(ast.sup).computeSize(),
-					sizeSub = createFormatTextObject(ast.sub).computeSize();
+				var sizeSup = wrapSize(ast.sup),
+					sizeSub = wrapSize(ast.sub);
 				return {
 					x: Math.max(sizeSup.x, sizeSub.x),
 					y: sizeSup.y + prevSize.y + sizeSub.y,
@@ -347,8 +376,8 @@ function createFormatTextObject(ast) {
 				};
 			},
 			format: function(canvas, x, y, prevSize) {
-				var sup = createFormatTextObject(ast.sup),
-					sub = createFormatTextObject(ast.sub),
+				var sup = wrapCreate(ast.sup),
+					sub = wrapCreate(ast.sub),
 					supSize = sup.computeSize();
 				sup.format(canvas, x, y);
 				sub.format(canvas, x, y + prevSize.y + supSize.y);
@@ -367,6 +396,8 @@ function createFormatTextObject(ast) {
 		return condMatrix();
 	case "accent":
 		return condAccent();
+	case "emphasis":
+		return condEmphasis();
 	case "simple":
 		me = {
 			computeSize: function() {
@@ -398,15 +429,19 @@ function createFormatTextObject(ast) {
 	case "func":
 		me = {
 			computeSize: function() {
+				var sizeSup = wrapSize(ast.sup);
 				return {
-					x: ast.item.length + 1,
-					y: 1,
-					center: 0
+					x: ast.item.length + sizeSup.x + 1,
+					y: 1 + sizeSup.y,
+					center: sizeSup.y
 				};
 			},
 			format: function(canvas, x, y) {
-				canvas.drawText(x, y, ast.item);
-				canvas.space(x + ast.item.length, y);
+				var sup = wrapCreate(ast.sup),
+					sizeSup = wrapSize(ast.sup);
+				canvas.drawText(x, y + sizeSup.y, ast.item);
+				sup.format(canvas, x + ast.item.length, y)
+				canvas.space(x + ast.item.length + sizeSup.x, y + sizeSup.y);
 			}
 		};
 		return me;
@@ -420,32 +455,35 @@ function createFormatTextObject(ast) {
 					iResult,
 					iSizeBefore,
 					iCenter;
+				result = {
+					x: 0,
+					y: 0,
+					center: 0
+				};
 				iSizeBefore = {
 					x: 0,
 					y: 1,
 					center: 0
 				};
 				for(i = 0; i < ast.items.length; i++, iSizeBefore = iResult) {
-					iOp = true;
-					if(ast.items[i].type === "op") {
-						iOpSize = iOp ? 2 : 0;
-						iOp = false;
-					} else if(ast.items[i].type === "func") {
-						iOpSize = i > 0 ? 1 : 0;
+					if(ast.items[i].type === "op" && iOp) {
+						iOpSize = 1;
+					} else if(ast.items[i].type === "func" && i > 0) {
+						iOpSize = 1;
 					} else {
 						iOpSize = 0;
 					}
-					iResult = createFormatTextObject(ast.items[i]).computeSize(iSizeBefore);
-					if(result) {
-						iCenter = Math.max(result.center, iResult.center);
-						result = {
-							x: result.x + iResult.x + iOpSize,
-							y: iCenter + Math.max(result.y - result.center, iResult.y - iResult.center),
-							center: iCenter
-						};
-					} else {
-						result = iResult;
+					iResult = wrapCreate(ast.items[i]).computeSize(iSizeBefore);
+					iCenter = Math.max(result.center, iResult.center);
+					result = {
+						x: result.x + iResult.x + iOpSize,
+						y: iCenter + Math.max(result.y - result.center, iResult.y - iResult.center),
+						center: iCenter
+					};
+					if(ast.items[i].type === "op" && iOp) {
+						iOpSize++;
 					}
+					iOp = ast.items[i].type !== "op";
 				}
 				return result;
 			},
@@ -473,7 +511,7 @@ function createFormatTextObject(ast) {
 					} else {
 						iOpSize = 0;
 					}
-					iWalked = createFormatTextObject(ast.items[i]);
+					iWalked = wrapCreate(ast.items[i]);
 					iSize = iWalked.computeSize(iSizeBefore);
 					iWalked.format(canvas, x + ix + iOpSize, y + thisSize.center - iSize.center, iSizeBefore);
 					if(ast.items[i].type === "op" && iOp) {
