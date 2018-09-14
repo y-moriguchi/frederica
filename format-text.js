@@ -286,15 +286,15 @@ function createFormatTextObject(ast) {
 		return me;
 	case "sup":
 		me = {
-			computeSize: function() {
+			computeSize: function(prevSize) {
 				var sizeSup = createFormatTextObject(ast.sup).computeSize();
 				return {
 					x: sizeSup.x,
-					y: sizeSup.y + 1,
-					center: sizeSup.y
+					y: sizeSup.y + prevSize.y,
+					center: prevSize.center + sizeSup.y
 				};
 			},
-			format: function(canvas, x, y) {
+			format: function(canvas, x, y, prevSize) {
 				var sup = createFormatTextObject(ast.sup);
 				sup.format(canvas, x, y);
 			}
@@ -302,37 +302,37 @@ function createFormatTextObject(ast) {
 		return me;
 	case "sub":
 		me = {
-			computeSize: function() {
+			computeSize: function(prevSize) {
 				var sizeSub = createFormatTextObject(ast.sub).computeSize();
 				return {
 					x: sizeSub.x,
-					y: sizeSub.y + 1,
-					center: 0
+					y: sizeSub.y + prevSize.y,
+					center: prevSize.center
 				};
 			},
-			format: function(canvas, x, y) {
+			format: function(canvas, x, y, prevSize) {
 				var sub = createFormatTextObject(ast.sub);
-				sub.format(canvas, x, y + 1);
+				sub.format(canvas, x, y + prevSize.y);
 			}
 		};
 		return me;
 	case "supsub":
 		me = {
-			computeSize: function() {
+			computeSize: function(prevSize) {
 				var sizeSup = createFormatTextObject(ast.sup).computeSize(),
 					sizeSub = createFormatTextObject(ast.sub).computeSize();
 				return {
 					x: Math.max(sizeSup.x, sizeSub.x),
-					y: sizeSup.y + 1 + sizeSub.y,
-					center: sizeSup.y
+					y: sizeSup.y + prevSize.y + sizeSub.y,
+					center: prevSize.center + sizeSup.y
 				};
 			},
-			format: function(canvas, x, y) {
+			format: function(canvas, x, y, prevSize) {
 				var sup = createFormatTextObject(ast.sup),
 					sub = createFormatTextObject(ast.sub),
 					supSize = sup.computeSize();
 				sup.format(canvas, x, y);
-				sub.format(canvas, x, y + 1 + supSize.y);
+				sub.format(canvas, x, y + prevSize.y + supSize.y);
 			}
 		};
 		return me;
@@ -397,8 +397,14 @@ function createFormatTextObject(ast) {
 					iOp = false,
 					iOpSize,
 					iResult,
+					iSizeBefore,
 					iCenter;
-				for(i = 0; i < ast.items.length; i++) {
+				iSizeBefore = {
+					x: 0,
+					y: 1,
+					center: 0
+				};
+				for(i = 0; i < ast.items.length; i++, iSizeBefore = iResult) {
 					iOp = true;
 					if(ast.items[i].type === "op") {
 						iOpSize = iOp ? 2 : 0;
@@ -408,7 +414,7 @@ function createFormatTextObject(ast) {
 					} else {
 						iOpSize = 0;
 					}
-					iResult = createFormatTextObject(ast.items[i]).computeSize();
+					iResult = createFormatTextObject(ast.items[i]).computeSize(iSizeBefore);
 					if(result) {
 						iCenter = Math.max(result.center, iResult.center);
 						result = {
@@ -429,8 +435,14 @@ function createFormatTextObject(ast) {
 					thisSize = me.computeSize(),
 					iWalked,
 					iSize,
+					iSizeBefore,
 					ix = 0;
-				for(i = 0; i < ast.items.length; i++, ix += iSize.x + iOpSize) {
+				iSizeBefore = {
+					x: 0,
+					y: 1,
+					center: 0
+				};
+				for(i = 0; i < ast.items.length; i++, ix += iSize.x + iOpSize, iSizeBefore = iSize) {
 					if(ast.items[i].type === "op" && iOp) {
 						canvas.space(x + ix, y + thisSize.center - iSize.center);
 						iOpSize = 1;
@@ -441,8 +453,8 @@ function createFormatTextObject(ast) {
 						iOpSize = 0;
 					}
 					iWalked = createFormatTextObject(ast.items[i]);
-					iSize = iWalked.computeSize();
-					iWalked.format(canvas, x + ix + iOpSize, y + thisSize.center - iSize.center);
+					iSize = iWalked.computeSize(iSizeBefore);
+					iWalked.format(canvas, x + ix + iOpSize, y + thisSize.center - iSize.center, iSizeBefore);
 					if(ast.items[i].type === "op" && iOp) {
 						canvas.space(x + ix + iSize.x + iOpSize++, y + thisSize.center - iSize.center);
 					}
