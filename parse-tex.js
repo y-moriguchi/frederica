@@ -157,6 +157,9 @@ function createLaTeXParser(option) {
 				R.then(/[a-zA-Z0-9]/, function(x, b, a) { return { type: "simple", item: x }; }),
 				R.then(/[\-\+]/, function(x, b, a) { return { type: "op", item: x }; }),
 				R.then(bracket, function(x, b, a) { return { type: "simple", item: x }; }));
+			var ptnBarBar = R.then("\\bar").then("{").then("\\bar").then("{").then(ptnExprList).then("}").then("}").action(function(a) {
+				return { type: "accent", body: a, accent: "=" }
+			});
 			var ptnMathrm = R.then("\\mathrm")
 				.then("{")
 				.then(/[^}\n]+/, function(x, b, a) { return { type: "simple", item: x }; })
@@ -208,6 +211,7 @@ function createLaTeXParser(option) {
 				ptnInt,
 				ptnLim,
 				ptnMatrix,
+				ptnBarBar,
 				generateAccents(accents),
 				generateEmphasises(emphasises),
 				generateTrifuncs(trifuncs),
