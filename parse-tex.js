@@ -64,6 +64,16 @@ function createLaTeXParser(option) {
 				"[": { leftUp: "-", leftDown: "-" },
 				"\\{": { leftUp: "/", leftDown: "\\", bracket: true }
 			};
+			var accents = {
+				"hat": "^",
+				"check": "v",
+				"acute": "'",
+				"grave": "`",
+				"tilde": "~",
+				"bar": "-",
+				"vec": "->",
+				"dot": "."
+			};
 			function generateFuncs(funcs) {
 				var i,
 					ptnf = [];
@@ -81,6 +91,20 @@ function createLaTeXParser(option) {
 					if(seqs.hasOwnProperty(i)) {
 						(function(f) {
 							ptnf.push(R.then(f, function(x, b, a) { return { type: type, item: seqs[f] }}));
+						})(i);
+					}
+				}
+				return R.or.apply(null, ptnf);
+			}
+			function generateAccents(accents) {
+				var i,
+					ptnf = [];
+				for(i in accents) {
+					if(accents.hasOwnProperty(i)) {
+						(function(f) {
+							ptnf.push(R.then("\\" + f).then("{").then(ptnExprList).then("}").action(function(a) {
+								return { type: "accent", body: a, accent: accents[f] }
+							}));
 						})(i);
 					}
 				}
@@ -154,6 +178,7 @@ function createLaTeXParser(option) {
 				ptnInt,
 				ptnLim,
 				ptnMatrix,
+				generateAccents(accents),
 				generateFuncs(funcs)
 			);
 		};

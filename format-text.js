@@ -255,6 +255,25 @@ function createFormatTextObject(ast) {
 		};
 		return me;
 	}
+	function condAccent() {
+		var me;
+		me = {
+			computeSize: function() {
+				var bodySize = createFormatTextObject(ast.body).computeSize();
+				return {
+					x: Math.max(bodySize.x, ast.accent.length),
+					y: bodySize.y + 1,
+					center: bodySize.center + 1
+				};
+			},
+			format: function(canvas, x, y) {
+				var body = createFormatTextObject(ast.body);
+				body.format(canvas, x, y + 1);
+				canvas.drawText(x, y, ast.accent);
+			}
+		};
+		return me;
+	}
 	condSum = condSumInt(3, 3, ["---", " < ", "---"]);
 	condInt = condSumInt(3, 3, [" /\\", " | ", "\\/ "]);
 	condLim = condSumInt(3, 1, ["lim"]);
@@ -346,6 +365,8 @@ function createFormatTextObject(ast) {
 		return condRoot();
 	case "matrix":
 		return condMatrix();
+	case "accent":
+		return condAccent();
 	case "simple":
 		me = {
 			computeSize: function() {
