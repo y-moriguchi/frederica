@@ -195,6 +195,13 @@ function createLaTeXParser(option) {
 				.then(/[\]\)\.]/, function(x, b, a) {
 					return { type: "matrix", body: a.body, leftUp: a.leftUp, leftDown: a.leftDown, bracket: a.bracket, right: x };
 				});
+			var ptnBinom = R.then("\\binom")
+				.then("{")
+				.then(ptnExprList)
+				.then("}")
+				.then("{")
+				.then(ptnExprList, function(x, b, a) { return { type: "binom", n: a, m: b }; })
+				.then("}");
 			return R.or(
 				generateSeqs(sequencesSimple, "simple"),
 				generateSeqs(sequencesOp, "op"),
@@ -211,6 +218,7 @@ function createLaTeXParser(option) {
 				ptnInt,
 				ptnLim,
 				ptnMatrix,
+				ptnBinom,
 				ptnBarBar,
 				generateAccents(accents),
 				generateEmphasises(emphasises),

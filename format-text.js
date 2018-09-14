@@ -303,6 +303,31 @@ function createFormatTextObject(ast) {
 		};
 		return me;
 	}
+	function condBinom() {
+		var me;
+		me = {
+			computeSize: function(prevSize) {
+				var sizeN = wrapSize(ast.n),
+					sizeM = wrapSize(ast.m);
+				return {
+					x: Math.max(sizeN.x, sizeM.x) + 2,
+					y: sizeN.y + 1 + sizeM.y,
+					center: sizeN.y
+				};
+			},
+			format: function(canvas, x, y) {
+				var n = wrapCreate(ast.n),
+					m = wrapCreate(ast.m),
+					sizeN = n.computeSize(),
+					sizeM = m.computeSize();
+				n.format(canvas, x + 1, y);
+				m.format(canvas, x + 1, y + 1 + sizeN.y);
+				canvas.drawText(x, y + sizeN.y, "(");
+				canvas.drawText(x + 1 + Math.max(sizeN.x, sizeM.x), y + sizeN.y, ")");
+			}
+		};
+		return me;
+	}
 	condSum = condSumInt(3, 3, ["---", " < ", "---"]);
 	condInt = condSumInt(3, 3, [" /\\", " | ", "\\/ "]);
 	condLim = condSumInt(3, 1, ["lim"]);
@@ -398,6 +423,8 @@ function createFormatTextObject(ast) {
 		return condAccent();
 	case "emphasis":
 		return condEmphasis();
+	case "binom":
+		return condBinom();
 	case "simple":
 		me = {
 			computeSize: function() {
