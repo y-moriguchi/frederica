@@ -6,7 +6,8 @@
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  **/
-var R = require("rena-js").clone();
+var R = require("rena-js").clone(),
+	common = require("./common");
 R.ignoreDefault(/[ \t\n]+/);
 
 function createLaTeXParser(option) {
@@ -77,6 +78,114 @@ function createLaTeXParser(option) {
 				"mathbb": { begin: "*|", end: "*" },
 				"mathfrak": { begin: "**", end: "*" }
 			};
+			var mathChars = [
+//				'\'': '^\\prime',
+//				'"':  '^{\\prime\\prime}',
+				['Α', '\\Alpha'],
+				['α', '\\alpha'],
+				['Β', '\\Beta'],
+				['β', '\\beta'],
+				['Γ', '\\Gamma'],
+				['γ', '\\gamma'],
+				['Δ', '\\Delta'],
+				['δ', '\\delta'],
+				['Ε', '\\Epsilon'],
+				['ε', '\\epsilon'],
+				['Ζ', '\\Zeta'],
+				['ζ', '\\zeta'],
+				['Η', '\\Eta'],
+				['η', '\\eta'],
+				['Θ', '\\Theta'],
+				['θ', '\\theta'],
+				['Ι', '\\Iota'],
+				['ι', '\\iota'],
+				['Κ', '\\Kappa'],
+				['κ', '\\kappa'],
+				['Λ', '\\Lambda'],
+				['λ', '\\lambda'],
+				['Μ', '\\Mu'],
+				['μ', '\\mu'],
+				['Ν', '\\Nu'],
+				['ν', '\\nu'],
+				['Ξ', '\\Xi'],
+				['ξ', '\\xi'],
+				['Π', '\\Pi'],
+				['π', '\\pi'],
+				['Ρ', '\\Rho'],
+				['ρ', '\\rho'],
+				['Σ', '\\Sigma'],
+				['σ', '\\sigma'],
+				['Τ', '\\Tau'],
+				['τ', '\\tau'],
+				['Υ', '\\Upsilon'],
+				['υ', '\\upsilon'],
+				['Φ', '\\Phi'],
+				['φ', '\\phi'],
+				['Χ', '\\Chi'],
+				['χ', '\\chi'],
+				['Ψ', '\\Psi'],
+				['ψ', '\\psi'],
+				['Ω', '\\Omega'],
+				['ω', '\\omega'],
+//				['°', '^\\circ'],
+				['△', '\\triangle'],
+				['□', '\\Box'],
+				['†', '\\dagger'],
+				['‡', '\\ddagger'],
+				['★', '\\star'],
+				['…', '\\cdots'],
+				['～', '\\sim'],
+				['\u00ac', '\\lnot'],
+				['\u00b1', '\\pm'],
+				['\u00d7', '\\times'],
+				['\u00f7', '\\div'],
+				['\u2200', '\\forall'],
+				['\u2202', '\\partial'],
+				['\u2203', '\\exists'],
+				['\u2205', '\\emptyset'],
+				['\u2207', '\\nabla'],
+				['\u221e', '\\infty'],
+				['\u2208', '\\in'],
+				['\u2209', '\\notin'],
+				['\u220b', '\\ni'],
+				['\u2213', '\\mp'],
+				['\u221d', '\\propto'],
+				['\u2220', '\\angle'],
+				['\u2225', '\\parallel'],
+				['\u2226', '\\nparallel'],
+				['\u2227', '\\land'],
+				['\u2228', '\\lor'],
+				['\u2229', '\\cap'],
+				['\u222a', '\\cup'],
+				['\u2234', '\\therefore'],
+				['\u2235', '\\because'],
+				['\u2243', '\\simeq'],
+				['\u2245', '\\cong'],
+				['\u2248', '\\approx'],
+				['\u2252', '\\simeq'],
+				['\u2260', '\\neq'],
+				['\u2261', '\\equiv'],
+				['\u2266', '\\leq'],
+				['\u2267', '\\geq'],
+				['\u226a', '\\ll'],
+				['\u226b', '\\gg'],
+				['\u2276', '\\lessgtr'],
+				['\u2277', '\\gtrless'],
+				['\u2282', '\\subset'],
+				['\u2283', '\\supset'],
+				['\u2286', '\\subseteq'],
+				['\u2287', '\\supseteq'],
+				['\u228a', '\\subsetneq'],
+				['\u228b', '\\supsetneq'],
+				['\u2295', '\\oplus'],
+				['\u2296', '\\ominus'],
+				['\u2297', '\\otimes'],
+				['\u22a5', '\\perp'],
+				['\u22bf', '\\triangle'],
+				['\u22da', '\\lesseqgtr'],
+				['\u22db', '\\gtreqless'],
+				['\u29bf', '\\odot']
+			];
 			function generateTrifuncs(funcs) {
 				var i,
 					ptnf = [];
@@ -137,6 +246,16 @@ function createLaTeXParser(option) {
 							}));
 						})(i);
 					}
+				}
+				return R.or.apply(null, ptnf);
+			}
+			function generateMathChars(mathChars) {
+				var i,
+					ptnf = [];
+				for(i = 0; i < mathChars.length; i++) {
+					(function(f) {
+						ptnf.push(R.then(mathChars[f][1]).action(function(a) { return { type: "simple", item: mathChars[f][0] }; }));
+					})(i);
 				}
 				return R.or.apply(null, ptnf);
 			}
@@ -202,7 +321,13 @@ function createLaTeXParser(option) {
 				.then("{")
 				.then(ptnExprList, function(x, b, a) { return { type: "binom", n: a, m: b }; })
 				.then("}");
-			return R.or(
+			var ptnUnknownCommand = R.then(/\\[a-zA-Z][a-zA-Z0-9]*/, function(x, b, a) { return { type: "simple", item: x }; });
+			var ptnPrintable = R.then(common.printable, function(x, b, a) { return { type: "simple", item: x }; });
+			var patterns = [];
+			if(opt.multibyte) {
+				patterns.push(generateMathChars(mathChars));
+			}
+			patterns = patterns.concat([
 				generateSeqs(sequencesSimple, "simple"),
 				generateSeqs(sequencesOp, "op"),
 				ptnSimple,
@@ -223,8 +348,11 @@ function createLaTeXParser(option) {
 				generateAccents(accents),
 				generateEmphasises(emphasises),
 				generateTrifuncs(trifuncs),
-				generateFuncs(funcs)
-			);
+				generateFuncs(funcs),
+				ptnUnknownCommand,
+				ptnPrintable
+			]);
+			return R.or.apply(null, patterns);
 		};
 	}
 	var ptnExprList = R.Yn(

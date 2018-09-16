@@ -6,9 +6,12 @@
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  **/
+var common = require("./common");
+
 function createCanvas(x, y, option) {
 	var me,
 		opt = option ? option : {},
+		twoBytes = common.getTwoBytes(opt),
 		canvas = [],
 		i,
 		j;
@@ -24,9 +27,17 @@ function createCanvas(x, y, option) {
 			return me;
 		},
 		drawText: function(x, y, text) {
-			var i;
+			var i,
+				ch;
 			for(i = 0; i < text.length; i++) {
-				canvas[y][x + i] = text.charAt(i);
+				ch = text.charAt(i);
+				if(opt.multibyte && twoBytes.test(ch)) {
+					canvas[y][x + i] = text.charAt(i);
+					canvas[y][x + i + 1] = "";
+					i++;
+				} else {
+					canvas[y][x + i] = text.charAt(i);
+				}
 			}
 			return me;
 		},
@@ -58,20 +69,34 @@ function createCanvas(x, y, option) {
 	return me;
 }
 
-function createFormatTextObject(ast) {
+function createFormatTextObject(ast, option) {
 	var me,
 		condSum,
 		comdInt,
-		condLim;
+		condLim,
+		opt = option ? option : {},
+		twoBytes = common.getTwoBytes(opt);
+	function getLength(item) {
+		var i,
+			res = 0;
+		if(opt.multibyte) {
+			for(i = 0; i < item.length; i++) {
+				res += twoBytes.test(item.charAt(i)) ? 2 : 1;
+			}
+			return res;
+		} else {
+			return item.length;
+		}
+	}
 	function wrapSize(ast, prevSize) {
-		return ast ? createFormatTextObject(ast).computeSize(prevSize) : {
+		return ast ? createFormatTextObject(ast, option).computeSize(prevSize) : {
 			x: 0,
 			y: 0,
 			center: 0
 		};
 	}
 	function wrapFormat(ast) {
-		return ast ? createFormatTextObject(ast).format : function() {}
+		return ast ? createFormatTextObject(ast, option).format : function() {}
 	}
 	function wrapCreate(ast) {
 		return {
@@ -116,7 +141,7 @@ function createFormatTextObject(ast) {
 				return {
 					x: Math.max(sizeBody.y, sizeNth.x) + sizeBody.x,
 					y: Math.max(sizeBody.y + 1, sizeNth.y + sizeNth.x),
-					center: Math.max(sizeBody.center, sizeNth.y + sizeNth.x - sizeBody.center - 1)
+					center: Math.max(sizeBody.center + 1, sizeNth.y + sizeNth.x - sizeBody.center)
 				};
 			},
 			format: function(canvas, x, y) {
@@ -429,7 +454,7 @@ function createFormatTextObject(ast) {
 		me = {
 			computeSize: function() {
 				return {
-					x: ast.item.length,
+					x: getLength(ast.item),
 					y: 1,
 					center: 0
 				};
@@ -443,7 +468,7 @@ function createFormatTextObject(ast) {
 		me = {
 			computeSize: function() {
 				return {
-					x: ast.item.length,
+					x: getLength(ast.item),
 					y: 1,
 					center: 0
 				};
@@ -458,7 +483,7 @@ function createFormatTextObject(ast) {
 			computeSize: function() {
 				var sizeSup = wrapSize(ast.sup);
 				return {
-					x: ast.item.length + sizeSup.x + 1,
+					x: getLength(ast.item) + sizeSup.x + 1,
 					y: 1 + sizeSup.y,
 					center: sizeSup.y
 				};
@@ -467,8 +492,8 @@ function createFormatTextObject(ast) {
 				var sup = wrapCreate(ast.sup),
 					sizeSup = wrapSize(ast.sup);
 				canvas.drawText(x, y + sizeSup.y, ast.item);
-				sup.format(canvas, x + ast.item.length, y)
-				canvas.space(x + ast.item.length + sizeSup.x, y + sizeSup.y);
+				sup.format(canvas, x + getLength(ast.item), y)
+				canvas.space(x + getLength(ast.item) + sizeSup.x, y + sizeSup.y);
 			}
 		};
 		return me;
@@ -494,7 +519,7 @@ function createFormatTextObject(ast) {
 				};
 				for(i = 0; i < ast.items.length; i++, iSizeBefore = iResult) {
 					if(ast.items[i].type === "op" && iOp) {
-						iOpSize = 1;
+						iOpSize = 2;
 					} else if(ast.items[i].type === "func" && i > 0) {
 						iOpSize = 1;
 					} else {
@@ -507,9 +532,6 @@ function createFormatTextObject(ast) {
 						y: iCenter + Math.max(result.y - result.center, iResult.y - iResult.center),
 						center: iCenter
 					};
-					if(ast.items[i].type === "op" && iOp) {
-						iOpSize++;
-					}
 					iOp = ast.items[i].type !== "op";
 				}
 				return result;
@@ -555,7 +577,7 @@ function createFormatTextObject(ast) {
 }
 
 function formatText(ast, option) {
-	var formatObject = createFormatTextObject(ast),
+	var formatObject = createFormatTextObject(ast, option),
 		size = formatObject.computeSize(),
 		canvas = createCanvas(size.x, size.y, option);
 	formatObject.format(canvas, 0, 0);
