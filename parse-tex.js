@@ -12,7 +12,7 @@ R.ignoreDefault(/[ \t\n]+/);
 
 function createLaTeXParser(option) {
 	var opt = option ? option : {};
-	function generatePtnExpr(bracket) {
+	function generatePtnExpr() {
 		return function (ptnExprList, ptnExpr, ptnExprListWithoutBracket, ptnExprWithoutBracket) {
 			var trifuncs = [ "sinh", "cosh", "tanh", "sin", "cos", "tan", "csc", "sec", "cot" ];
 			var funcs = [ "arcsin", "arccos", "arctan", "log", "ln", "exp" ];
@@ -259,6 +259,31 @@ function createLaTeXParser(option) {
 				}
 				return R.or.apply(null, ptnf);
 			}
+			function generateParenCommand(left, right) {
+				return R.then(left)
+					.then(/[\(\[\.]|\\{/, function(x, b, a) { return x; })
+					.then(ptnExprList, function(x, b, a) { return { left: a, expr: b }; })
+					.then(right)
+					.then(/[\)\]\.]|\\}/, parenAction);
+			}
+			function parenAction(x, b, a) {
+				var items = [];
+				if(a.left === "\\{") {
+					items.push({ type: "simple", item: "{" });
+				} else if(a.left !== ".") {
+					items.push({ type: "simple", item: a.left });
+				}
+				items.push(a.expr);
+				if(x === "\\}") {
+					items.push({ type: "simple", item: "}" });
+				} else if(x !== ".") {
+					items.push({ type: "simple", item: x });
+				}
+				return {
+					type: "exprlist",
+					items: items
+				};
+			}
 			var ptnFrac = R.then("\\frac")
 				.then("{")
 				.then(ptnExprList)
@@ -268,14 +293,17 @@ function createLaTeXParser(option) {
 				.then("}");
 			var ptnRoot = R.attr(null)
 				.then("\\sqrt")
-				.then(R.maybe(R.then("[").then(ptnExprListWithoutBracket).then("]")))
+				.then(R.maybe(R.then("[").then(ptnExprList).then("]")))
 				.then("{")
 				.then(ptnExprList, function(x, b, a) { return { type: "root", body: b, nth: a }; })
 				.then("}");
 			var ptnSimple = R.or(
 				R.then(/[a-zA-Z0-9]/, function(x, b, a) { return { type: "simple", item: x }; }),
 				R.then(/[\-\+]/, function(x, b, a) { return { type: "op", item: x }; }),
-				R.then(bracket, function(x, b, a) { return { type: "simple", item: x }; }));
+				R.then(/[=]/, function(x, b, a) { return { type: "simple", item: x }; }));
+			var ptnBracket = R.then(/[\(\[]|\\{/, function(x, b, a) { return x; })
+				.then(ptnExprList, function(x, b, a) { return { left: a, expr: b }; })
+				.then(/[\)\]]|\\}/, parenAction);
 			var ptnBarBar = R.then("\\bar").then("{").then("\\bar").then("{").then(ptnExprList).then("}").then("}").action(function(a) {
 				return { type: "accent", body: a, accent: "=" }
 			});
@@ -321,7 +349,26 @@ function createLaTeXParser(option) {
 				.then("{")
 				.then(ptnExprList, function(x, b, a) { return { type: "binom", n: a, m: b }; })
 				.then("}");
-			var ptnUnknownCommand = R.then(/\\[a-zA-Z][a-zA-Z0-9]*/, function(x, b, a) { return { type: "simple", item: x }; });
+			var ptnUnknownCommand = R.then(function(str, index) {
+				var regex = /\\[a-zA-Z][a-zA-Z0-9]*/,
+					match;
+				regex.lastIndex = 0;
+				if(!!(match = regex.exec(str.substr(index))) &&
+						match.index === 0 &&
+						match[0] !== "\\right" &&
+						match[0] !== "\\bigr" &&
+						match[0] !== "\\Bigr" &&
+						match[0] !== "\\biggr" &&
+						match[0] !== "\\Biggr") {
+					return {
+						match: match[0],
+						lastIndex: index + regex.lastIndex,
+						extra: match
+					};
+				} else {
+					return null;
+				}
+			}, function(x, b, a) { return { type: "simple", item: x }; });
 			var ptnPrintable = R.then(common.printable, function(x, b, a) { return { type: "simple", item: x }; });
 			var patterns = [];
 			if(opt.multibyte) {
@@ -343,12 +390,18 @@ function createLaTeXParser(option) {
 				ptnInt,
 				ptnLim,
 				ptnMatrix,
+				generateParenCommand("\\left", "\\right"),
+				generateParenCommand("\\bigl", "\\bigr"),
+				generateParenCommand("\\Bigl", "\\Bigr"),
+				generateParenCommand("\\biggl", "\\biggr"),
+				generateParenCommand("\\Biggl", "\\Biggr"),
 				ptnBinom,
 				ptnBarBar,
 				generateAccents(accents),
 				generateEmphasises(emphasises),
 				generateTrifuncs(trifuncs),
 				generateFuncs(funcs),
+				ptnBracket,
 				ptnUnknownCommand,
 				ptnPrintable
 			]);
@@ -360,12 +413,7 @@ function createLaTeXParser(option) {
 			return R.then(R.attr([]).thenZeroOrMore(ptnExpr, function(x, b, a) { return a.concat(b); }))
 				.action(function(a) { return { type: "exprlist", items: a }; });
 		},
-		generatePtnExpr(/[\(\)\[\]=]/),
-		function(ptnExprList, ptnExpr, ptnExprListWithoutBracket, ptnExprWithoutBracket) {
-			return R.then(R.attr([]).thenZeroOrMore(ptnExprWithoutBracket, function(x, b, a) { return a.concat(b); }))
-				.action(function(a) { return { type: "exprlist", items: a }; });
-		},
-		generatePtnExpr(/[\(\)=]/)
+		generatePtnExpr()
 	);
 
 	function parseTeX(input) {
