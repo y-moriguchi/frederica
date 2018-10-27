@@ -355,6 +355,8 @@ function createFormatTextObject(ast, option) {
 	}
 	condSum = condSumInt(3, 3, ["---", " < ", "---"]);
 	condInt = condSumInt(3, 3, [" /\\", " | ", "\\/ "]);
+	condOint = condSumInt(3, 3, [" /\\", " O ", "\\/ "]);
+	condProd = condSumInt(5, 3, ["_____", " | | ", " | | "]);
 	condLim = condSumInt(3, 1, ["lim"]);
 	switch(ast.type) {
 	case "frac":
@@ -436,8 +438,12 @@ function createFormatTextObject(ast, option) {
 		return me;
 	case "sum":
 		return condSum();
+	case "prod":
+		return condProd();
 	case "int":
 		return condInt();
+	case "oint":
+		return condOint();
 	case "lim":
 		return condLim();
 	case "root":
@@ -569,6 +575,18 @@ function createFormatTextObject(ast, option) {
 					iOp = ast.items[i].type !== "op";
 				}
 			}
+		};
+		return me;
+	case "space":
+		me = {
+			computeSize: function() {
+				return {
+					x: 0,
+					y: 0,
+					center: 0
+				};
+			},
+			format: function(canvas, x, y, prevSize) {}
 		};
 		return me;
 	default:

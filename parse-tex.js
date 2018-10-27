@@ -325,8 +325,14 @@ function createLaTeXParser(option) {
 			var ptnSum = R.then("\\sum").attr({}).then(R.maybe(R.or(ptnSupSub, ptnSubSup, ptnSup, ptnSub))).action(function(a) {
 				return { type: "sum", sup: a.sup, sub: a.sub };
 			});
+			var ptnProd = R.then("\\prod").attr({}).then(R.maybe(R.or(ptnSupSub, ptnSubSup, ptnSup, ptnSub))).action(function(a) {
+				return { type: "prod", sup: a.sup, sub: a.sub };
+			});
 			var ptnInt = R.then("\\int").attr({}).then(R.maybe(R.or(ptnSupSub, ptnSubSup, ptnSup, ptnSub))).action(function(a) {
 				return { type: "int", sup: a.sup, sub: a.sub };
+			});
+			var ptnOint = R.then("\\oint").attr({}).then(R.maybe(R.or(ptnSupSub, ptnSubSup, ptnSup, ptnSub))).action(function(a) {
+				return { type: "oint", sup: a.sup, sub: a.sub };
 			});
 			var ptnLim = R.then("\\lim").attr({}).then(R.maybe(ptnSub)).action(function(a) {
 				return { type: "lim", sub: a.sub };
@@ -349,8 +355,11 @@ function createLaTeXParser(option) {
 				.then("{")
 				.then(ptnExprList, function(x, b, a) { return { type: "binom", n: a, m: b }; })
 				.then("}");
+			var ptnSpace = R.or(
+				R.then("\\!", function(x, b, a) { return { type: "space" } })
+			);
 			var ptnUnknownCommand = R.then(function(str, index) {
-				var regex = /\\[a-zA-Z][a-zA-Z0-9]*/,
+				var regex = /\\[a-zA-Z][a-zA-Z0-9]*/g,
 					match;
 				regex.lastIndex = 0;
 				if(!!(match = regex.exec(str.substr(index))) &&
@@ -370,13 +379,7 @@ function createLaTeXParser(option) {
 				}
 			}, function(x, b, a) { return { type: "simple", item: x }; });
 			var ptnPrintable = R.then(common.printable, function(x, b, a) { return { type: "simple", item: x }; });
-			var patterns = [];
-			if(opt.multibyte) {
-				patterns.push(generateMathChars(mathChars));
-			}
-			patterns = patterns.concat([
-				generateSeqs(sequencesSimple, "simple"),
-				generateSeqs(sequencesOp, "op"),
+			var patterns = [
 				ptnSimple,
 				ptnBlock,
 				ptnMathrm,
@@ -387,7 +390,9 @@ function createLaTeXParser(option) {
 				ptnFrac,
 				ptnRoot,
 				ptnSum,
+				ptnProd,
 				ptnInt,
+				ptnOint,
 				ptnLim,
 				ptnMatrix,
 				generateParenCommand("\\left", "\\right"),
@@ -396,11 +401,19 @@ function createLaTeXParser(option) {
 				generateParenCommand("\\biggl", "\\biggr"),
 				generateParenCommand("\\Biggl", "\\Biggr"),
 				ptnBinom,
+				ptnSpace,
 				ptnBarBar,
 				generateAccents(accents),
 				generateEmphasises(emphasises),
 				generateTrifuncs(trifuncs),
-				generateFuncs(funcs),
+				generateFuncs(funcs)
+			];
+			if(opt.multibyte) {
+				patterns.push(generateMathChars(mathChars));
+			}
+			patterns = patterns.concat([
+				generateSeqs(sequencesSimple, "simple"),
+				generateSeqs(sequencesOp, "op"),
 				ptnBracket,
 				ptnUnknownCommand,
 				ptnPrintable
