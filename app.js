@@ -32,21 +32,42 @@ function usage() {
 	console.error("usage: frederica filename");
 }
 
-function main() {
-	var text, result;
-	if(process.argv.length < 3) {
+function parseOption() {
+	var argCount = 2,
+		result = {};
+	while(argCount < process.argv.length) {
+		if(process.argv[argCount] === "-o") {
+			result.output = process.argv[argCount + 1];
+			argCount += 2;
+		} else {
+			result.input = process.argv[argCount];
+			argCount++;
+		}
+	}
+	if(!result.input) {
 		usage();
 		process.exit(2);
 	}
+	return result;
+}
+
+function main() {
+	var text,
+		result,
+		option = parseOption();
 	try {
-		text = fs.readFileSync(process.argv[2], 'utf8');
+		text = fs.readFileSync(option.input, 'utf8');
 	} catch(e) {
 		console.log("file cannot read");
 		process.exit(2);
 	}
-	result = replaceText(text, "\n");
-	//result = replaceText(text, os.EOL);
-	console.log(result);
+	if(option.output) {
+		result = replaceText(text, os.EOL);
+		fs.writeFileSync(option.output, result);
+	} else {
+		result = replaceText(text, "\n");
+		console.log(result.replace(/\n$/, ""));
+	}
 }
 
 main();
