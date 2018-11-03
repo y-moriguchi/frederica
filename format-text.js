@@ -104,15 +104,16 @@ function createFormatTextObject(ast, option) {
 			format: wrapFormat(ast)
 		};
 	}
-	function condSumInt(xsize, ysize, text) {
+	function condSumInt(xsize, ysize, text, isInt) {
 		return function() {
 			var me;
 			me = {
 				computeSize: function() {
 					var sizeSup = wrapSize(ast.sup),
-						sizeSub = wrapSize(ast.sub);
+						sizeSub = wrapSize(ast.sub),
+						widthInt = isInt ? 0 : 1;
 					return {
-						x: Math.max(sizeSup.x, sizeSub.x) + xsize + 1,
+						x: Math.max(sizeSup.x, sizeSub.x) + xsize + widthInt,
 						y: sizeSup.y + sizeSub.y + ysize,
 						center: sizeSup.y + Math.floor(ysize / 2)
 					};
@@ -354,8 +355,8 @@ function createFormatTextObject(ast, option) {
 		return me;
 	}
 	condSum = condSumInt(3, 3, ["---", " < ", "---"]);
-	condInt = condSumInt(3, 3, [" /\\", " | ", "\\/ "]);
-	condOint = condSumInt(3, 3, [" /\\", " O ", "\\/ "]);
+	condInt = condSumInt(3, 3, [" /\\", " | ", "\\/ "], true);
+	condOint = condSumInt(3, 3, [" /\\", " O ", "\\/ "], true);
 	condProd = condSumInt(5, 3, ["_____", " | | ", " | | "]);
 	condLim = condSumInt(3, 1, ["lim"]);
 	switch(ast.type) {
@@ -526,7 +527,8 @@ function createFormatTextObject(ast, option) {
 					iOpSize,
 					iResult,
 					iSizeBefore,
-					iCenter;
+					iCenter,
+					iInt = false;
 				result = {
 					x: 0,
 					y: 0,
@@ -544,6 +546,10 @@ function createFormatTextObject(ast, option) {
 						iOpSize = iOp ? 1 : 0;
 					} else if(ast.items[i].type === "mathrm" && i > 0) {
 						iOpSize = iOp ? 1 : 0;
+					} else if((ast.items[i].type === "int" || ast.items[i].type === "oint") && i > 0) {
+						iOpSize = iInt ? 0 : 1;
+					} else if(iInt) {
+						iOpSize = 1;
 					} else {
 						iOpSize = 0;
 					}
@@ -555,6 +561,7 @@ function createFormatTextObject(ast, option) {
 						center: iCenter
 					};
 					iOp = ast.items[i].type !== "op";
+					iInt = ast.items[i].type === "int" || ast.items[i].type === "oint";
 				}
 				return result;
 			},
@@ -566,6 +573,7 @@ function createFormatTextObject(ast, option) {
 					iWalked,
 					iSize,
 					iSizeBefore,
+					iInt = false,
 					ix = 0;
 				iSizeBefore = {
 					x: 0,
@@ -582,6 +590,11 @@ function createFormatTextObject(ast, option) {
 					} else if(ast.items[i].type === "mathrm" && i > 0) {
 						canvas.space(x + ix, y + thisSize.center - iSize.center);
 						iOpSize = iOp ? 1 : 0;
+					} else if((ast.items[i].type === "int" || ast.items[i].type === "oint") && i > 0) {
+						canvas.space(x + ix, y + thisSize.center - iSize.center);
+						iOpSize = iInt ? 0 : 1;
+					} else if(iInt) {
+						iOpSize = 1;
 					} else {
 						iOpSize = 0;
 					}
@@ -592,6 +605,7 @@ function createFormatTextObject(ast, option) {
 						canvas.space(x + ix + iSize.x + iOpSize++, y + thisSize.center - iSize.center);
 					}
 					iOp = ast.items[i].type !== "op";
+					iInt = ast.items[i].type === "int" || ast.items[i].type === "oint";
 				}
 			}
 		};
