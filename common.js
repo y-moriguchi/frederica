@@ -6,7 +6,7 @@
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  **/
-var printableREStr = '\\!\\"\\#\\$\\&\\\'\\*\\+,\\-\\.\\/0-9\\:\\;\\<\\=\\>\\?@A-Z\\^_`a-z\\|' +
+var printableREStr = '\\!\\"\\#\\$\\\'\\*\\+,\\-\\.\\/0-9\\:\\;\\<\\=\\>\\?@A-Z\\^_`a-z\\|' +
 	'\xa1-\xac\xae-\u0377\u037a-\u037e\u0384-\u038a\u038c\u038e-\u03a1\u03a3-\u0527' +
 	'\u0531-\u0556\u0559-\u055f\u0561-\u0587\u0589-\u058a\u0591-\u05c7\u05d0-\u05ea\u05f0-\u05f4\u0606-\u061b' +
 	'\u061e-\u06dc\u06de-\u070d\u0710-\u074a\u074d-\u07b1\u07c0-\u07fa\u0800-\u082d\u0830-\u083e\u0840-\u085b' +

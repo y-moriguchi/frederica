@@ -206,7 +206,7 @@ function createFormatTextObject(ast, option) {
 				}
 				xMax += ast.right === "" ? 2 : 4;
 				return {
-					x: xMax,
+					x: xMax + 2,
 					y: ySize + 2,
 					center: Math.floor((ySize + 2) / 2)
 				}

@@ -368,7 +368,8 @@ function createLaTeXParser(option) {
 						match[0] !== "\\bigr" &&
 						match[0] !== "\\Bigr" &&
 						match[0] !== "\\biggr" &&
-						match[0] !== "\\Biggr") {
+						match[0] !== "\\Biggr" &&
+						match[0] !== "\\end") {
 					return {
 						match: match[0],
 						lastIndex: index + regex.lastIndex,
