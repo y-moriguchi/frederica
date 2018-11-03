@@ -527,7 +527,7 @@ function createFormatTextObject(ast, option) {
 					if(ast.items[i].type === "op" && iOp) {
 						iOpSize = 2;
 					} else if(ast.items[i].type === "func" && i > 0) {
-						iOpSize = 1;
+						iOpSize = iOp ? 1 : 0;
 					} else {
 						iOpSize = 0;
 					}
@@ -562,7 +562,7 @@ function createFormatTextObject(ast, option) {
 						iOpSize = 1;
 					} else if(ast.items[i].type === "func" && i > 0) {
 						canvas.space(x + ix, y + thisSize.center - iSize.center);
-						iOpSize = 1;
+						iOpSize = iOp ? 1 : 0;
 					} else {
 						iOpSize = 0;
 					}
