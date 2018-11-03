@@ -470,6 +470,20 @@ function createFormatTextObject(ast, option) {
 			}
 		};
 		return me;
+	case "mathrm":
+		me = {
+			computeSize: function() {
+				return {
+					x: getLength(ast.item) + 1,
+					y: 1,
+					center: 0
+				};
+			},
+			format: function(canvas, x, y) {
+				canvas.drawText(x, y, ast.item + " ");
+			}
+		};
+		return me;
 	case "op":
 		me = {
 			computeSize: function() {
@@ -528,6 +542,8 @@ function createFormatTextObject(ast, option) {
 						iOpSize = 2;
 					} else if(ast.items[i].type === "func" && i > 0) {
 						iOpSize = iOp ? 1 : 0;
+					} else if(ast.items[i].type === "mathrm" && i > 0) {
+						iOpSize = iOp ? 1 : 0;
 					} else {
 						iOpSize = 0;
 					}
@@ -561,6 +577,9 @@ function createFormatTextObject(ast, option) {
 						canvas.space(x + ix, y + thisSize.center - iSize.center);
 						iOpSize = 1;
 					} else if(ast.items[i].type === "func" && i > 0) {
+						canvas.space(x + ix, y + thisSize.center - iSize.center);
+						iOpSize = iOp ? 1 : 0;
+					} else if(ast.items[i].type === "mathrm" && i > 0) {
 						canvas.space(x + ix, y + thisSize.center - iSize.center);
 						iOpSize = iOp ? 1 : 0;
 					} else {

@@ -309,7 +309,7 @@ function createLaTeXParser(option) {
 			});
 			var ptnMathrm = R.then("\\mathrm")
 				.then("{")
-				.then(/[^}\n]+/, function(x, b, a) { return { type: "simple", item: x }; })
+				.then(/[^}\n]+/, function(x, b, a) { return { type: "mathrm", item: x }; })
 				.then("}");
 			var ptnBlock = R.then("{").then(ptnExprList).then("}");
 			var ptnSup = R.then("^").then(ptnExpr, function(x, b, a) { return { type: "sup", sup: b }; });
