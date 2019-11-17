@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /*
  * Frederica
  *
@@ -71,12 +72,17 @@ function main() {
 		console.log("file cannot read");
 		process.exit(2);
 	}
-	if(option.output) {
-		result = replaceText(text, os.EOL, option);
-		fs.writeFileSync(option.output, result);
-	} else {
-		result = replaceText(text, "\n", option);
-		console.log(result.replace(/\n$/, ""));
+
+	try {
+		if(option.output) {
+			result = replaceText(text, os.EOL, option);
+			fs.writeFileSync(option.output, result);
+		} else {
+			result = replaceText(text, "\n", option);
+			console.log(result.replace(/\n$/, ""));
+		}
+	} catch(e) {
+		console.error("Error occurred: " + e.message);
 	}
 }
 

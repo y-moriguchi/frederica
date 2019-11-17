@@ -378,7 +378,7 @@ function createLaTeXParser(option) {
 				} else {
 					return null;
 				}
-			}, function(x, b, a) { return { type: "simple", item: x }; });
+			}, function(x, b, a) { return { type: "mathrm", item: x }; });
 			var ptnPrintable = R.then(common.printable, function(x, b, a) { return { type: "simple", item: x }; });
 			var patterns = [
 				ptnSimple,

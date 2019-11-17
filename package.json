@@ -1,0 +1,21 @@
+{
+  "name": "frederica",
+  "version": "0.0.0",
+  "description": "LaTeX format to ASCII art",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "tex",
+    "ASCII-art"
+  ],
+  "bin": {
+    "frederica": "./app.js"
+  },
+  "author": "Yuichiro MORIGUCHI",
+  "license": "MIT",
+  "dependencies": {
+    "rena-js": "0.0.1"
+  }
+}
